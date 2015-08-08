@@ -12,14 +12,13 @@ import android.text.TextUtils;
 import android.view.MenuItem;
 import android.view.View;
 import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.github.sahasbhop.flog.FLog;
-import com.squareup.otto.Bus;
-import com.squareup.otto.Subscribe;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
@@ -43,6 +42,7 @@ public class WebViewActivity extends AppCompatActivity {
         ButterKnife.bind(this);
 
         if (validateIntent()) return;
+        FLog.d("url: %s", url);
 
         setupActionBar();
 
@@ -50,39 +50,19 @@ public class WebViewActivity extends AppCompatActivity {
         progressBar.getProgressDrawable().setColorFilter(getResources().getColor(R.color.accent), PorterDuff.Mode.SRC_IN);
 
         // Register OttoBus to receive cache update
-        Bus ottoBus = PreloadManager.getInstance(getApplicationContext()).getBus();
-        ottoBus.register(this);
-
         configWebView();
 
         if (loadFromCache) {
-            PreloadManager preloadManager = PreloadManager.getInstance(getApplicationContext());
-            String cache = preloadManager.getCache(url);
+            FLog.d("Load from cache");
+            webView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+            webView.loadUrl(url);
 
-            if (!TextUtils.isEmpty(cache)) {
-                FLog.d("Load from cache");
-                loadUrlFromCache(cache);
-
-            } else {
-                FLog.d("Cache is not ready, wait for a callback");
-                preloadManager.prioritizeUrl(url);
-            }
         } else {
             layoutProgress.setVisibility(View.VISIBLE);
 
             FLog.d("Load Url");
             webView.loadUrl(url);
         }
-    }
-
-    @Override
-    protected void onDestroy() {
-        try {
-            Bus ottoBus = PreloadManager.getInstance(getApplicationContext()).getBus();
-            ottoBus.unregister(this);
-        } catch (Exception e) {/*ignored*/}
-
-        super.onDestroy();
     }
 
     @Override
@@ -93,23 +73,6 @@ public class WebViewActivity extends AppCompatActivity {
                 return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    @SuppressWarnings("unused")
-    @Subscribe public void onUrlCacheUpdate(final UrlCacheEvent event) {
-        String eventUrl = event.url;
-
-        if (webView != null && url != null && url.equals(eventUrl)) {
-            if (isFinishing()) return;
-
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    FLog.d("Cache is ready");
-                    loadUrlFromCache(event.content);
-                }
-            });
-        }
     }
 
     private boolean validateIntent() {
@@ -144,6 +107,12 @@ public class WebViewActivity extends AppCompatActivity {
     }
 
     private void configWebView() {
+        webView.getSettings().setAppCachePath(getCacheDir().getAbsolutePath());
+        webView.getSettings().setAllowFileAccess(true);
+        webView.getSettings().setAppCacheEnabled(true);
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int progress) {
@@ -174,12 +143,6 @@ public class WebViewActivity extends AppCompatActivity {
                         .show();
             }
         });
-    }
-
-    private void loadUrlFromCache(String cache) {
-        if (webView != null && cache != null) {
-            webView.loadDataWithBaseURL(url, cache, "text/html", "utf-8", null);
-        }
     }
 
 }

@@ -8,9 +8,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -19,9 +22,13 @@ import com.github.sahasbhop.flog.FLog;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.Iterator;
+
 import butterknife.Bind;
 import butterknife.ButterKnife;
 
+import static com.github.sahasbhop.hqround1.JsonConstant.JSON_CACHE;
+import static com.github.sahasbhop.hqround1.JsonConstant.JSON_URL;
 import static com.github.sahasbhop.hqround1.JsonConstant.URL_SOURCE_JSON;
 
 public class MainActivity extends AppCompatActivity {
@@ -35,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
     private AsyncTask<Void, Void, Object> asyncTask;
     private JSONObject data;
     private JSONArray names;
-    private WebViewListSource source = WebViewListSource.SERVER;
+    private WebViewListSource source = WebViewListSource.LOCAL;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,7 +89,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         if (asyncTask != null) asyncTask.cancel(true);
-        PreloadManager.getInstance(getApplicationContext()).stopLoading();
         super.onDestroy();
     }
 
@@ -148,12 +154,7 @@ public class MainActivity extends AppCompatActivity {
                 final JSONObject jsonObject = (JSONObject) result;
 
                 FLog.d("Handle WebView list");
-                new Thread() {
-                    @Override
-                    public void run() {
-                        PreloadManager.getInstance(getApplicationContext()).handleWebViewList(jsonObject);
-                    }
-                }.start();
+                handleWebViewList(jsonObject);
 
                 FLog.d("Load data");
                 loadData(jsonObject);
@@ -184,6 +185,31 @@ public class MainActivity extends AppCompatActivity {
 
         FLog.d("Open WebView");
         WebViewHelper.openWebView(this, tag, json);
+    }
+
+    public void handleWebViewList(JSONObject jsonObject) {
+        WebView webView = new WebView(this);
+        webView.getSettings().setAppCachePath(getCacheDir().getAbsolutePath());
+        webView.getSettings().setAllowFileAccess(true);
+        webView.getSettings().setAppCacheEnabled(true);
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+
+        String tag, url;
+        JSONObject json;
+
+        for (Iterator<String> it = jsonObject.keys(); it.hasNext(); ) {
+            tag = it.next();
+            json = jsonObject.optJSONObject(tag);
+            url = json.optString(JSON_URL);
+
+            boolean cache = json.optBoolean(JSON_CACHE);
+
+            if (!cache || TextUtils.isEmpty(url)) continue;
+
+            FLog.d("Caching %s", tag);
+            webView.loadUrl(url);
+        }
     }
 
     public class LocalAdapter extends RecyclerView.Adapter<LocalAdapter.LocalViewHolder> {
