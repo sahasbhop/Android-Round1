@@ -5,6 +5,9 @@ import android.content.res.Resources;
 import android.support.annotation.RawRes;
 
 import com.github.sahasbhop.flog.FLog;
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.Response;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -18,6 +21,18 @@ import java.io.StringWriter;
 import java.io.Writer;
 
 public class WebViewListFactory {
+
+    public static JSONObject fromServer(String url) throws IOException, JSONException {
+        OkHttpClient client = new OkHttpClient();
+
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+
+        Response response = client.newCall(request).execute();
+        String string = response.body().string();
+        return new JSONObject(string);
+    }
 
     public static JSONObject fromRaw(Context context) throws JSONException {
         String string = getStringContent(context.getResources(), R.raw.webview_list);
@@ -43,4 +58,5 @@ public class WebViewListFactory {
 
         return writer.toString();
     }
+
 }

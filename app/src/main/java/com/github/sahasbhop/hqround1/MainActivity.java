@@ -1,6 +1,7 @@
 package com.github.sahasbhop.hqround1;
 
 import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -29,9 +30,12 @@ public class MainActivity extends AppCompatActivity {
     @Bind(R.id.recycler_view) RecyclerView recyclerView;
     @Bind(R.id.toolbar) Toolbar toolbar;
 
+    enum WebViewListSource {SERVER, LOCAL}
+
+    private AsyncTask<Void, Void, Object> asyncTask;
     private JSONObject data;
     private JSONArray names;
-    private AsyncTask<Void, Void, JSONObject> asyncTask;
+    private WebViewListSource source = WebViewListSource.SERVER;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,7 +73,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putString("data", data.toString());
+
+        if (data != null) {
+            outState.putString("data", data.toString());
+        }
     }
 
     @Override
@@ -81,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
     private void requestContent() {
         if (asyncTask != null) asyncTask.cancel(true);
 
-        asyncTask = new AsyncTask<Void, Void, JSONObject>() {
+        asyncTask = new AsyncTask<Void, Void, Object>() {
             @Override
             protected void onPreExecute() {
                 super.onPreExecute();
@@ -89,34 +96,56 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            protected JSONObject doInBackground(Void... params) {
-                JSONObject result = null;
+            protected Object doInBackground(Void... params) {
+                Object result = null;
                 try {
-                    result = WebViewListFactory.fromRaw(getApplicationContext());
+                    switch (source) {
+                        case LOCAL:
+                            result = WebViewListFactory.fromRaw(getApplicationContext());
+                            break;
+                        case SERVER:
+                            result = WebViewListFactory.fromServer(URL_SOURCE_JSON);
+                            break;
+                    }
                 } catch (Exception e) {
-                    FLog.w("Error: %s", e.getMessage());
+                    result = e;
                 }
                 return result;
             }
 
             @Override
-            protected void onPostExecute(JSONObject result) {
+            protected void onPostExecute(Object result) {
                 super.onPostExecute(result);
                 progressBar.setVisibility(View.GONE);
 
-                // Fail -> Pop-up alert dialog
-                if (result == null || result.length() == 0) {
+                DialogInterface.OnClickListener listener = new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        MainActivity.this.supportFinishAfterTransition();
+                    }
+                };
+
+                // Fail cases
+                if (result != null && result instanceof Exception) {
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setMessage(((Exception) result).getMessage())
+                            .setCancelable(false)
+                            .setPositiveButton(R.string.ok, listener)
+                            .show();
+                    return;
+                } else if (result == null || !(result instanceof JSONObject)) {
                     new AlertDialog.Builder(MainActivity.this)
                             .setMessage("Failed loading content!")
-                            .setPositiveButton(R.string.ok, null)
                             .setCancelable(false)
+                            .setPositiveButton(R.string.ok, listener)
                             .show();
                     return;
                 }
 
                 // Success -> Load data & setup adapter
                 FLog.d("Load data");
-                loadData(result);
+                loadData((JSONObject) result);
             }
         }.execute();
     }
@@ -147,6 +176,7 @@ public class MainActivity extends AppCompatActivity {
             new AlertDialog.Builder(this)
                     .setMessage(R.string.url_not_found)
                     .setCancelable(false)
+                    .setPositiveButton(R.string.ok, null)
                     .show();
             return;
         }
