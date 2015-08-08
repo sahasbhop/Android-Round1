@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.text.TextUtils;
 
-import com.github.sahasbhop.flog.FLog;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
@@ -26,11 +25,7 @@ public class WebViewHelper {
 
     public static String downloadContent(String url) throws IOException {
         OkHttpClient client = new OkHttpClient();
-
-        Request request = new Request.Builder()
-                .url(url)
-                .build();
-
+        Request request = new Request.Builder().url(url).build();
         Response response = client.newCall(request).execute();
         return response.body().string();
     }
@@ -46,7 +41,6 @@ public class WebViewHelper {
         boolean cache = json.optBoolean(JSON_CACHE);
 
         url = processUrl(url);
-        FLog.d("URL: %s", url);
 
         Intent intent = new Intent(activity, WebViewActivity.class);
         intent.putExtra("title", title);
@@ -64,15 +58,4 @@ public class WebViewHelper {
                 .replace("{selectedVouchers}", SELECTED_VOUCHERS);
     }
 
-    public static boolean isOnline() {
-        Runtime runtime = Runtime.getRuntime();
-        try {
-            Process ipProcess = runtime.exec("/system/bin/ping -c 1 8.8.8.8");
-            int exitValue = ipProcess.waitFor();
-            return (exitValue == 0);
-        } catch (Exception e) {
-            FLog.w("Error: %s", e.getMessage());
-        }
-        return false;
-    }
 }

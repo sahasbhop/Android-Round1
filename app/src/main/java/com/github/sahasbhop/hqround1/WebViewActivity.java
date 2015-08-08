@@ -33,6 +33,8 @@ public class WebViewActivity extends AppCompatActivity {
     @Bind(R.id.webview) WebView webView;
 
     private String url;
+    private String title;
+    private boolean loadFromCache;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,33 +42,9 @@ public class WebViewActivity extends AppCompatActivity {
         setContentView(R.layout.activity_web_view);
         ButterKnife.bind(this);
 
-        Intent intent = getIntent();
+        if (validateIntent()) return;
 
-        if (intent == null) {
-            supportFinishAfterTransition();
-            return;
-        }
-
-        String title = intent.getStringExtra("title");
-        boolean useCache = intent.getBooleanExtra("cache", false);
-
-        url = intent.getStringExtra("url");
-        FLog.d("URL: %s", url);
-
-        if (TextUtils.isEmpty(url)) {
-            FLog.w("URI Error!");
-            supportFinishAfterTransition();
-            return;
-        }
-
-        toolbar.setTitle(title);
-        setSupportActionBar(toolbar);
-
-        ActionBar actionBar = getSupportActionBar();
-
-        if (actionBar != null) {
-            actionBar.setDisplayHomeAsUpEnabled(true);
-        }
+        setupActionBar();
 
         // Set progress bar color
         progressBar.getProgressDrawable().setColorFilter(getResources().getColor(R.color.accent), PorterDuff.Mode.SRC_IN);
@@ -77,8 +55,7 @@ public class WebViewActivity extends AppCompatActivity {
 
         configWebView();
 
-        // Check cache
-        if (useCache) {
+        if (loadFromCache) {
             PreloadManager preloadManager = PreloadManager.getInstance(getApplicationContext());
             String cache = preloadManager.getCache(url);
 
@@ -87,13 +64,13 @@ public class WebViewActivity extends AppCompatActivity {
                 loadUrlFromCache(cache);
 
             } else {
-                FLog.d("Add URL to first queue and wait for the callback");
+                FLog.d("Cache is not ready, wait for a callback");
                 preloadManager.prioritizeUrl(url);
             }
         } else {
             layoutProgress.setVisibility(View.VISIBLE);
 
-            FLog.d("Load URL");
+            FLog.d("Load Url");
             webView.loadUrl(url);
         }
     }
@@ -108,25 +85,65 @@ public class WebViewActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                supportFinishAfterTransition();
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
     @SuppressWarnings("unused")
-    @Subscribe public void onUrlCacheUpdate(UrlCacheEvent event) {
+    @Subscribe public void onUrlCacheUpdate(final UrlCacheEvent event) {
         String eventUrl = event.url;
 
         if (webView != null && url != null && url.equals(eventUrl)) {
-            loadUrlFromCache(event.content);
+            if (isFinishing()) return;
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    FLog.d("Cache is ready");
+                    loadUrlFromCache(event.content);
+                }
+            });
         }
     }
 
-    private void loadUrlFromCache(String cache) {
-        if (webView != null && cache != null) {
-            FLog.d("Load data");
-            webView.loadDataWithBaseURL(url, cache, "text/html", "utf-8", null);
+    private boolean validateIntent() {
+        Intent intent = getIntent();
+
+        if (intent == null) {
+            supportFinishAfterTransition();
+            return true;
+        }
+
+        title = intent.getStringExtra("title");
+        loadFromCache = intent.getBooleanExtra("cache", false);
+        url = intent.getStringExtra("url");
+
+        if (TextUtils.isEmpty(url)) {
+            FLog.w("URI Error!");
+            supportFinishAfterTransition();
+            return true;
+        }
+        return false;
+    }
+
+    private void setupActionBar() {
+        toolbar.setTitle(title);
+        setSupportActionBar(toolbar);
+
+        ActionBar actionBar = getSupportActionBar();
+
+        if (actionBar != null) {
+            actionBar.setDisplayHomeAsUpEnabled(true);
         }
     }
 
     private void configWebView() {
-        webView.getSettings().setJavaScriptEnabled(true);
-
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int progress) {
@@ -139,6 +156,7 @@ public class WebViewActivity extends AppCompatActivity {
                 }
             }
         });
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
@@ -158,13 +176,10 @@ public class WebViewActivity extends AppCompatActivity {
         });
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case android.R.id.home:
-                supportFinishAfterTransition();
-                return true;
+    private void loadUrlFromCache(String cache) {
+        if (webView != null && cache != null) {
+            webView.loadDataWithBaseURL(url, cache, "text/html", "utf-8", null);
         }
-        return super.onOptionsItemSelected(item);
     }
+
 }
