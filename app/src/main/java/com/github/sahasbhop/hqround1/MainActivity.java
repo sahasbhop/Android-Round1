@@ -8,7 +8,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,8 +22,6 @@ import org.json.JSONObject;
 import butterknife.Bind;
 import butterknife.ButterKnife;
 
-import static com.github.sahasbhop.hqround1.JsonConstant.JSON_PAGE_TITLE;
-import static com.github.sahasbhop.hqround1.JsonConstant.JSON_URL;
 import static com.github.sahasbhop.hqround1.JsonConstant.URL_SOURCE_JSON;
 
 public class MainActivity extends AppCompatActivity {
@@ -85,6 +82,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         if (asyncTask != null) asyncTask.cancel(true);
+        PreloadManager.getInstance(getApplicationContext()).stopLoading();
         super.onDestroy();
     }
 
@@ -147,8 +145,18 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 // Success -> Load data & setup adapter
+                final JSONObject jsonObject = (JSONObject) result;
+
+                FLog.d("Handle WebView list");
+                new Thread() {
+                    @Override
+                    public void run() {
+                        PreloadManager.getInstance(getApplicationContext()).handleWebViewList(jsonObject);
+                    }
+                }.start();
+
                 FLog.d("Load data");
-                loadData((JSONObject) result);
+                loadData(jsonObject);
             }
         }.execute();
     }
@@ -174,23 +182,8 @@ public class MainActivity extends AppCompatActivity {
         JSONObject json = data.optJSONObject(tag);
         if (json == null) return;
 
-        String url = json.optString(JSON_URL);
-        FLog.d("URL: %s", url);
-
-        if (TextUtils.isEmpty(url)) {
-            new AlertDialog.Builder(this)
-                    .setMessage(R.string.url_not_found)
-                    .setCancelable(false)
-                    .setPositiveButton(R.string.ok, null)
-                    .show();
-            return;
-        }
-
-        String title = json.optString(JSON_PAGE_TITLE);
-        if (TextUtils.isEmpty(title)) title = tag;
-
         FLog.d("Open WebView");
-        WebViewHelper.openWebView(this, title, url);
+        WebViewHelper.openWebView(this, tag, json);
     }
 
     public class LocalAdapter extends RecyclerView.Adapter<LocalAdapter.LocalViewHolder> {
