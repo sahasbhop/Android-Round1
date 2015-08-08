@@ -46,23 +46,13 @@ public class WebViewActivity extends AppCompatActivity {
 
         setupActionBar();
 
-        // Set progress bar color
         progressBar.getProgressDrawable().setColorFilter(getResources().getColor(R.color.accent), PorterDuff.Mode.SRC_IN);
+        layoutProgress.setVisibility(loadFromCache ? View.GONE : View.VISIBLE);
 
-        // Register OttoBus to receive cache update
         configWebView();
 
-        if (loadFromCache) {
-            FLog.d("Load from cache");
-            webView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
-            webView.loadUrl(url);
-
-        } else {
-            layoutProgress.setVisibility(View.VISIBLE);
-
-            FLog.d("Load Url");
-            webView.loadUrl(url);
-        }
+        FLog.d("Load from %s", loadFromCache ? "cache" : "server");
+        webView.loadUrl(url);
     }
 
     @Override
@@ -107,10 +97,6 @@ public class WebViewActivity extends AppCompatActivity {
     }
 
     private void configWebView() {
-        webView.getSettings().setAppCachePath(getCacheDir().getAbsolutePath());
-        webView.getSettings().setAllowFileAccess(true);
-        webView.getSettings().setAppCacheEnabled(true);
-        webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
 
         webView.setWebChromeClient(new WebChromeClient() {

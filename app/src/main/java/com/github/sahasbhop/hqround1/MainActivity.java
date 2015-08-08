@@ -188,12 +188,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void handleWebViewList(JSONObject jsonObject) {
-        WebView webView = new WebView(this);
-        webView.getSettings().setAppCachePath(getCacheDir().getAbsolutePath());
-        webView.getSettings().setAllowFileAccess(true);
-        webView.getSettings().setAppCacheEnabled(true);
-        webView.getSettings().setJavaScriptEnabled(true);
-        webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+        WebView webView;
 
         String tag, url;
         JSONObject json;
@@ -207,7 +202,8 @@ public class MainActivity extends AppCompatActivity {
 
             if (!cache || TextUtils.isEmpty(url)) continue;
 
-            FLog.d("Caching %s", tag);
+            webView = new WebView(this);
+            webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
             webView.loadUrl(url);
         }
     }
