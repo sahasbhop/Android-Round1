@@ -18,6 +18,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.github.sahasbhop.flog.FLog;
+import com.squareup.otto.Bus;
+import com.squareup.otto.Subscribe;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
@@ -30,6 +32,8 @@ public class WebViewActivity extends AppCompatActivity {
     @Bind(R.id.toolbar) Toolbar toolbar;
     @Bind(R.id.webview) WebView webView;
 
+    private String url;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -37,8 +41,17 @@ public class WebViewActivity extends AppCompatActivity {
         ButterKnife.bind(this);
 
         Intent intent = getIntent();
+
+        if (intent == null) {
+            supportFinishAfterTransition();
+            return;
+        }
+
         String title = intent.getStringExtra("title");
-        String url = intent.getStringExtra("url");
+        boolean useCache = intent.getBooleanExtra("cache", false);
+
+        url = intent.getStringExtra("url");
+        FLog.d("URL: %s", url);
 
         if (TextUtils.isEmpty(url)) {
             FLog.w("URI Error!");
@@ -55,17 +68,63 @@ public class WebViewActivity extends AppCompatActivity {
             actionBar.setDisplayHomeAsUpEnabled(true);
         }
 
-        progressBar.getProgressDrawable().setColorFilter(
-                getResources().getColor(R.color.accent), PorterDuff.Mode.SRC_IN);
+        // Set progress bar color
+        progressBar.getProgressDrawable().setColorFilter(getResources().getColor(R.color.accent), PorterDuff.Mode.SRC_IN);
+
+        // Register OttoBus to receive cache update
+        Bus ottoBus = PreloadManager.getInstance(getApplicationContext()).getBus();
+        ottoBus.register(this);
 
         configWebView();
 
-        FLog.d("Load URL: %s", url);
-        webView.loadUrl(url);
+        // Check cache
+        if (useCache) {
+            PreloadManager preloadManager = PreloadManager.getInstance(getApplicationContext());
+            String cache = preloadManager.getCache(url);
+
+            if (!TextUtils.isEmpty(cache)) {
+                FLog.d("Load from cache");
+                loadUrlFromCache(cache);
+
+            } else {
+                FLog.d("Add URL to first queue and wait for the callback");
+                preloadManager.prioritizeUrl(url);
+            }
+        } else {
+            layoutProgress.setVisibility(View.VISIBLE);
+
+            FLog.d("Load URL");
+            webView.loadUrl(url);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        try {
+            Bus ottoBus = PreloadManager.getInstance(getApplicationContext()).getBus();
+            ottoBus.unregister(this);
+        } catch (Exception e) {/*ignored*/}
+
+        super.onDestroy();
+    }
+
+    @SuppressWarnings("unused")
+    @Subscribe public void onUrlCacheUpdate(UrlCacheEvent event) {
+        String eventUrl = event.url;
+
+        if (webView != null && url != null && url.equals(eventUrl)) {
+            loadUrlFromCache(event.content);
+        }
+    }
+
+    private void loadUrlFromCache(String cache) {
+        if (webView != null && cache != null) {
+            FLog.d("Load data");
+            webView.loadDataWithBaseURL(url, cache, "text/html", "utf-8", null);
+        }
     }
 
     private void configWebView() {
-        webView.clearCache(true);
         webView.getSettings().setJavaScriptEnabled(true);
 
         webView.setWebChromeClient(new WebChromeClient() {
@@ -74,7 +133,6 @@ public class WebViewActivity extends AppCompatActivity {
                 String text = String.format("%s %d%%", getString(R.string.loading_content), progress);
                 textProgress.setText(text);
                 progressBar.setProgress(progress);
-                layoutProgress.setVisibility(View.VISIBLE);
 
                 if (progress >= 100) {
                     layoutProgress.setVisibility(View.GONE);

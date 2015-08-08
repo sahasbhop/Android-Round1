@@ -4,17 +4,55 @@ import android.app.Activity;
 import android.content.Intent;
 import android.text.TextUtils;
 
-import static com.github.sahasbhop.hqround1.JsonConstant.*;
+import com.github.sahasbhop.flog.FLog;
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.Response;
+
+import org.json.JSONObject;
+
+import java.io.IOException;
+
+import static com.github.sahasbhop.hqround1.JsonConstant.APP_SECRET_KEY;
+import static com.github.sahasbhop.hqround1.JsonConstant.CURRENCY_CODE;
+import static com.github.sahasbhop.hqround1.JsonConstant.JSON_CACHE;
+import static com.github.sahasbhop.hqround1.JsonConstant.JSON_PAGE_TITLE;
+import static com.github.sahasbhop.hqround1.JsonConstant.JSON_URL;
+import static com.github.sahasbhop.hqround1.JsonConstant.OFFER_ID;
+import static com.github.sahasbhop.hqround1.JsonConstant.SELECTED_VOUCHERS;
+import static com.github.sahasbhop.hqround1.JsonConstant.USER_ID;
 
 public class WebViewHelper {
 
-    public static void openWebView(Activity activity, String title, String url) {
-        if (TextUtils.isEmpty(url)) throw new IllegalArgumentException();
+    public static String downloadContent(String url) throws IOException {
+        OkHttpClient client = new OkHttpClient();
+
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+
+        Response response = client.newCall(request).execute();
+        return response.body().string();
+    }
+
+    public static void openWebView(Activity activity, String tag, JSONObject json) {
+        if (json == null) throw new IllegalArgumentException();
+
+        String url = json.optString(JSON_URL);
+
+        String title = json.optString(JSON_PAGE_TITLE);
+        if (TextUtils.isEmpty(title)) title = tag;
+
+        boolean cache = json.optBoolean(JSON_CACHE);
 
         url = processUrl(url);
+        FLog.d("URL: %s", url);
+
         Intent intent = new Intent(activity, WebViewActivity.class);
         intent.putExtra("title", title);
         intent.putExtra("url", url);
+        intent.putExtra("cache", cache);
+
         activity.startActivity(intent);
     }
 
@@ -24,5 +62,17 @@ public class WebViewHelper {
                 .replace("{currencyCode}", CURRENCY_CODE)
                 .replace("{offerId}", OFFER_ID)
                 .replace("{selectedVouchers}", SELECTED_VOUCHERS);
+    }
+
+    public static boolean isOnline() {
+        Runtime runtime = Runtime.getRuntime();
+        try {
+            Process ipProcess = runtime.exec("/system/bin/ping -c 1 8.8.8.8");
+            int exitValue = ipProcess.waitFor();
+            return (exitValue == 0);
+        } catch (Exception e) {
+            FLog.w("Error: %s", e.getMessage());
+        }
+        return false;
     }
 }

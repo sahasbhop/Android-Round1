@@ -29,7 +29,8 @@
             android:paddingBottom="16dp"
             android:paddingLeft="32dp"
             android:paddingRight="32dp"
-            android:paddingTop="16dp">
+            android:paddingTop="16dp"
+            android:visibility="gone">
 
             <TextView
                 android:id="@+id/text_progress"
