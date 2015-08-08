@@ -22,7 +22,9 @@ import org.json.JSONObject;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
-import static com.github.sahasbhop.hqround1.JsonConstant.*;
+
+import static com.github.sahasbhop.hqround1.JsonConstant.JSON_URL;
+import static com.github.sahasbhop.hqround1.JsonConstant.URL_SOURCE_JSON;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -150,6 +152,7 @@ public class MainActivity extends AppCompatActivity {
         }.execute();
     }
 
+    // Assign data to class members and setup RecyclerView
     private void loadData(JSONObject result) {
         data = result;
         names = result.names();
@@ -159,6 +162,7 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
     }
 
+    // Handle item click
     private void onWebViewItemClick(int position) {
         FLog.v("position: %d", position);
         if (names == null || position >= names.length()) return;
@@ -180,7 +184,8 @@ public class MainActivity extends AppCompatActivity {
                     .show();
             return;
         }
-        // TODO open WebView with specific URL
+
+        WebViewHelper.openWebView(this, tag, url);
     }
 
     public class LocalAdapter extends RecyclerView.Adapter<LocalAdapter.LocalViewHolder> {
