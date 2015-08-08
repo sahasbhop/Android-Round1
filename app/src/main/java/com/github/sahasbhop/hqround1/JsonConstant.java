@@ -9,5 +9,6 @@ public class JsonConstant {
     public static final String OFFER_ID = "10736598";
     public static final String SELECTED_VOUCHERS = "[]";
 
+    public static final String JSON_PAGE_TITLE = "pageTitle";
     public static final String JSON_URL = "url";
 }

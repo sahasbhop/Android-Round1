@@ -23,6 +23,7 @@ import org.json.JSONObject;
 import butterknife.Bind;
 import butterknife.ButterKnife;
 
+import static com.github.sahasbhop.hqround1.JsonConstant.JSON_PAGE_TITLE;
 import static com.github.sahasbhop.hqround1.JsonConstant.JSON_URL;
 import static com.github.sahasbhop.hqround1.JsonConstant.URL_SOURCE_JSON;
 
@@ -185,7 +186,11 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        WebViewHelper.openWebView(this, tag, url);
+        String title = json.optString(JSON_PAGE_TITLE);
+        if (TextUtils.isEmpty(title)) title = tag;
+
+        FLog.d("Open WebView");
+        WebViewHelper.openWebView(this, title, url);
     }
 
     public class LocalAdapter extends RecyclerView.Adapter<LocalAdapter.LocalViewHolder> {
