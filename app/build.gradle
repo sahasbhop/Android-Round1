@@ -6,7 +6,7 @@ android {
 
     defaultConfig {
         applicationId "com.github.sahasbhop.hqround1"
-        minSdkVersion 7 // to use support library V7
+        minSdkVersion 7 // for appcompat-v7
         targetSdkVersion 22
         versionCode 1
         versionName "1.0"
@@ -23,5 +23,7 @@ dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.android.support:appcompat-v7:22.2.1'
     compile 'com.android.support:recyclerview-v7:22.2.1'
+    compile 'com.github.sahasbhop:formatted-log:0.0.5'
     compile 'com.jakewharton:butterknife:7.0.1'
+    compile 'com.squareup.okhttp:okhttp:2.4.0'
 }
