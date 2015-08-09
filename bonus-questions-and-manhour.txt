@@ -1,0 +1,55 @@
+=== Bonus Questions ===
+
+1) If URL of WebView changes, will application load content from new URL?
+
+It depends on the source file. If we request fresh data from the server, WebView should be able to detect any URLs that doesn't get cached and start download the new content.
+
+
+2) We would like to have a link in WebView, that will open some native screen in application. Is it possible? How would you do it?
+
+I know 2 methods that should do:- 
+
+First option is using Android SDK Javascript Interface, but it may not work well if we want to support iOS as well. Years ago while I work on a project that heavily uses a WebView, I tested the concept and found that Javascript interface only works on Android. 
+
+The second option is to override WebViewClient shouldOverrideUrlLoading() to intercept URL query string creating by the web page. By setup a pattern for communication; for example: 
+
+"https://clouddomain.com/index.htm?command=openBarCodeScanner&barcodeType=QR"
+
+With this, Android application will knows that it have to start a barcode scanner that support QR code.
+
+
+=== Man Hour from www.toggl.com === 
+
+Total 5h 50min
+
+Initialize project	0:33:03
+- Study the requirement
+- Fork the project
+- Setup environment
+- Initial commits
+
+WebView List		1:55:43
+- Bundle JSON file
+- Display WebView list from JSON
+- Handle on item select event
+- Support fetching WebView list from the server
+
+Open URL		1:18:22
+- Display selected URL in a WebView
+- Create a class to replace some values in URL
+- Add some test cases to check the replace logic
+- Show progress while loading content
+
+Caching (1st solution)	1:32:02
+- Use HashMap for collecting cached content
+- Key is an MD5 generated from a full URL
+- Value is an HTML string downloaded from the server
+- Downloading operation is controlled by LinkedList and Single Thread Executor
+- If user request for a page that the cache is not ready, the URL will be reordered to the first of the queue, after finish loading the UI will be triggered (using Otto Bus)
+- For cache=true URLs, I call WebView.loadData() instead of WebView.loadUrl()
+- The output, however, I found a problem with CSS styles for any cache pages, and could not found a proper solution.
+
+Caching (2nd solution)	0:31:07
+- I simplify the logic by just looping through a WebView list, looking for cache enabled URLs and instantiating a single-use WebView to load the content into application cache.
+- When use select a cache-enabled WebView, cached content will be loaded and displayed in WebView properly
+- However, I still found a problem while trying to open a cached URL while the handset is offline, sometimes the CSS style are not rendered properly.
